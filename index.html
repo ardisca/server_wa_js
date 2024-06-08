@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Socket.IO Chat</title>
+    <style>
+      body {
+        margin: 0;
+        padding-bottom: 3rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+      }
+
+      #form {
+        background: rgba(0, 0, 0, 0.15);
+        padding: 0.25rem;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        height: 3rem;
+        box-sizing: border-box;
+        backdrop-filter: blur(10px);
+      }
+
+      #input {
+        border: none;
+        padding: 0 1rem;
+        flex-grow: 1;
+        border-radius: 2rem;
+        margin: 0.25rem;
+      }
+
+      #input:focus {
+        outline: none;
+      }
+
+      #form > button {
+        background: #333;
+        border: none;
+        padding: 0 1rem;
+        margin: 0.25rem;
+        border-radius: 3px;
+        outline: none;
+        color: #fff;
+      }
+
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      #messages > li {
+        padding: 0.5rem 1rem;
+      }
+
+      #messages > li:nth-child(odd) {
+        background: #efefef;
+      }
+
+      #qrcode {
+        margin: 20px;
+        text-align: center;
+      }
+
+      #formMessage {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="qrcode"></div>
+
+    <div id="contact">
+      <div id="numberContact"></div>
+      <form id="formContact" action="">
+        <input type="number" id="inputContact" autocomplete="off" />
+        <button>Add</button>
+      </form>
+    </div>
+    <br />
+    <div id="formMessage">
+      <ul id="messages"></ul>
+      <form id="form" action="">
+        <input id="input" autocomplete="off" />
+        <button>Send</button>
+      </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script>
+      const socket = io();
+
+      const qrcodeDiv = document.getElementById("qrcode");
+      const formMessage = document.getElementById("formMessage");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const messages = document.getElementById("messages");
+
+      const formContact = document.getElementById("formContact");
+      const inputContact = document.getElementById("inputContact");
+      const numberContact = document.getElementById("numberContact");
+
+      const number = [];
+
+      formContact.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (inputContact.value) {
+          const formattedNumber = inputContact.value.replace("+", "") + "@c.us";
+          number.push(formattedNumber);
+          console.log(number);
+
+          const displayNumbers = number.map((num) => num.split("@")[0]);
+          const displayText =
+            displayNumbers.length > 2
+              ? `${displayNumbers.slice(0, 2).join(", ")}, ...`
+              : displayNumbers.join(", ");
+
+          numberContact.textContent = displayText;
+
+          inputContact.value = "";
+        }
+      });
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (input.value) {
+          const message = input.value;
+          socket.emit("chat message", { message, number });
+          input.value = "";
+        }
+      });
+
+      socket.on("chat message", ({ message, number }) => {
+        const item = document.createElement("li");
+        const formattedMessage = `Pesan: ${message}, Penerima: ${number}`;
+        item.textContent = formattedMessage;
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+
+      socket.on("qr", (qr) => {
+        console.log(qr);
+        const qrCode = new QRious({
+          element: document.createElement("canvas"),
+          value: qr,
+          size: 250,
+        });
+        qrcodeDiv.innerHTML = "";
+        qrcodeDiv.appendChild(qrCode.canvas);
+      });
+
+      socket.on("isLogin", ({ name, phone }) => {
+        qrcodeDiv.innerHTML = "";
+        alert(`Selamat datang ${name} - ${phone}`);
+        formMessage.style.display = "block";
+      });
+      socket.on("send status", () => {
+        console.log("Terkirim");
+      });
+    </script>
+  </body>
+</html>
