@@ -3,7 +3,9 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { Client } from "whatsapp-web.js";
+import pkg from "whatsapp-web.js";
+const { Client, MessageMedia } = pkg;
+// import bodyParser from "body-parser";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,6 +19,8 @@ let isLogin = false;
 app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "index.html"));
 });
+
+// app.use(bodyParser.json({ limit: "50mb" }));
 
 const client = new Client({
   webVersionCache: {
@@ -35,26 +39,26 @@ io.on("connection", (socket) => {
       socket.emit("qr", qr);
     }
   });
-  // When the client is ready, run this code (only once)
   client.once("ready", async () => {
     const { pushname, wid } = client.info;
-    const name = pushname || "Pengguna"; // Use the pushname if available
-    const phone = wid.user; // Extract phone number from ID
+    const name = pushname || "Pengguna";
+    const phone = wid.user;
     console.log(`Client is ready! Name: ${name}, Phone: ${phone}`);
-    socket.emit("isLogin", { name, phone }); // Notify the client that WhatsApp client is ready
+    socket.emit("isLogin", { name, phone });
   });
 
   socket.on("disconnect", () => {
     console.log("user disconnected");
   });
 
-  socket.on("chat message", ({ message, number }) => {
+  socket.on("chat message", ({ message, number, file }) => {
     console.log("Terima Server");
     console.log("messages: " + message);
     console.log("numbers: " + number);
+    console.log("file: " + file);
 
+    sendMessage({ contact: number, message, socket, file });
     socket.emit("chat message", { message, number });
-    sendMessage({ contact: number, message, socket });
     console.log("Keluar Server");
   });
 });
@@ -65,16 +69,28 @@ server.listen(3000, () => {
   console.log("server running at http://localhost:3000");
 });
 
-function sendMessage({ contact, message, socket }) {
+async function sendMessage({ contact, message, socket, file }) {
+  let media;
+  if (file) {
+    const [prefix, base64File] = file.split(",");
+    const mimeType = prefix.match(/:(.*?);/)[1];
+
+    media = new MessageMedia(mimeType, base64File);
+    console.log(file);
+    console.log(media);
+  }
+
   for (let index = 0; index < contact.length; index++) {
-    client
-      .sendMessage(contact[index], message)
-      .then((response) => {
-        socket.emit("send status");
-        console.log("Message sent successfully:", response.isStatus);
-      })
-      .catch((error) => {
-        console.error("Error sending message:", error);
-      });
+    try {
+      if (media) {
+        await client.sendMessage(contact[index], media, { caption: message });
+      } else {
+        await client.sendMessage(contact[index], message);
+      }
+      socket.emit("send status");
+      console.log("Message sent successfully");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   }
 }

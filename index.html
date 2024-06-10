@@ -68,6 +68,10 @@
       #formMessage {
         display: block;
       }
+
+      #imageInput {
+        margin-left: 10px;
+      }
     </style>
   </head>
   <body>
@@ -85,6 +89,11 @@
       <ul id="messages"></ul>
       <form id="form" action="">
         <input id="input" autocomplete="off" />
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/*,.pdf,.doc,.docx,video/*"
+        />
         <button>Send</button>
       </form>
     </div>
@@ -103,6 +112,8 @@
       const formContact = document.getElementById("formContact");
       const inputContact = document.getElementById("inputContact");
       const numberContact = document.getElementById("numberContact");
+
+      const fileInput = document.getElementById("fileInput");
 
       const number = [];
 
@@ -125,19 +136,56 @@
         }
       });
 
+      // Form submit event listener
       form.addEventListener("submit", (e) => {
         e.preventDefault();
-        if (input.value) {
-          const message = input.value;
-          socket.emit("chat message", { message, number });
+
+        const message = input.value;
+        let file = null;
+
+        if (fileInput.files && fileInput.files[0]) {
+          console.log("File size:", fileInput.files[0].size);
+          // Check file size limit (e.g., 16MB for WhatsApp)
+          const maxSize = 16 * 1024 * 1024; // 16MB
+          if (fileInput.files[0].size > maxSize) {
+            alert("File is too large!");
+            return;
+          }
+
+          const reader = new FileReader();
+
+          reader.onload = function (e) {
+            file = e.target.result;
+
+            // Emit the message with file
+            socket.emit("chat message", { message, number, file });
+
+            input.value = "";
+            fileInput.value = "";
+          };
+
+          reader.readAsDataURL(fileInput.files[0]);
+        } else {
+          // Emit the message without file
+          socket.emit("chat message", { message, number, file });
+
           input.value = "";
         }
       });
 
-      socket.on("chat message", ({ message, number }) => {
+      socket.on("chat message", ({ message, number, image }) => {
         const item = document.createElement("li");
         const formattedMessage = `Pesan: ${message}, Penerima: ${number}`;
         item.textContent = formattedMessage;
+
+        if (image) {
+          const img = document.createElement("img");
+          img.src = image;
+          img.style.maxWidth = "200px";
+          img.style.display = "block";
+          item.appendChild(img);
+        }
+
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
       });
