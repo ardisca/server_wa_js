@@ -24,6 +24,11 @@ app.get("/", (req, res) => {
 
 const client = new Client({
   authStrategy: new LocalAuth(),
+  puppeteer: {
+    //C:\Program Files\Google\Chrome\Application
+    executablePath:
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  },
   // webVersionCache: {
   //   type: "remote",
   //   remotePath:
