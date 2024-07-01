@@ -4,7 +4,7 @@ import { Server } from "socket.io";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import pkg from "whatsapp-web.js";
-const { Client, MessageMedia } = pkg;
+const { Client, MessageMedia, LocalAuth } = pkg;
 // import bodyParser from "body-parser";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,11 +23,12 @@ app.get("/", (req, res) => {
 // app.use(bodyParser.json({ limit: "50mb" }));
 
 const client = new Client({
-  webVersionCache: {
-    type: "remote",
-    remotePath:
-      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
-  },
+  authStrategy: new LocalAuth(),
+  // webVersionCache: {
+  //   type: "remote",
+  //   remotePath:
+  //     "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
+  // },
 });
 
 io.on("connection", (socket) => {
